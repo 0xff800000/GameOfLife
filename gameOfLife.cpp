@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <vector>
+#include <sys/unistd.h>
 #include <SDL2/SDL.h>
 //#include <conio.h>
 
@@ -172,6 +173,7 @@ void loop(SDL_Renderer*renderer,int w,int h,int gridW,int gridH){
 	int delayVal=0;
 	int timer=0;
     for(;;){
+    	if(!autoStep && !SDL_PollEvent(&ev)){usleep(10000);}
 
     	if(delayVal<0)delayVal=0;
 
