@@ -179,7 +179,7 @@ void loop(SDL_Renderer*renderer,int w,int h,int gridW,int gridH){
     		timer=0;
     		ant.step();
     		drawWorld(renderer,ant,w,h);
-    		//SDL_Delay(delayVal);
+    		SDL_Delay(delayVal);
     	}
 
     	while(SDL_PollEvent(&ev)){

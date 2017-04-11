@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -W -Wall
-LDFLAGS = -lSDL2main -lSDL2 -lstdc++
+LDFLAGS = -lSDL2main -lSDL2 -lstdc++ -O3
 EXEC = gameOfLife
 
 all: $(EXEC)
