@@ -7,6 +7,7 @@
 //============================================================================
 
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <unistd.h>
 #include <SDL2/SDL.h>
@@ -14,12 +15,43 @@
 
 using namespace std;
 
-//################################ Class GameOfLife #########################################################
-
 struct Cell{bool isAlive;bool willSurvive;};
+enum Dir{UP,DOWN,LEFT,RIGHT};
 struct Point{int x; int y;};
 typedef vector<Point> Form;
-vector< Point > glider;
+
+// File manipulation
+void parseFormFile(const char*path, vector<Form>&forms, vector<string>&names){
+	ifstream file;
+	file.open(path);
+	string line;
+	Form form;
+	if(file.is_open()){
+		while(getline(file,line)){
+			// Discard comment
+			if(line[0] == '#'){
+				string name(100,'\0');
+				sscanf(&line[0], "#%s",&name[0]);
+				//cout<<name<<endl;
+				names.push_back(name);
+				continue;
+			}
+			// End of form
+			if(line[0] == '!'){
+				forms.push_back(form);
+				form.clear();
+				Form (form).swap(form);
+				continue;
+			}
+			Point pt;
+			sscanf(&line[0], "%d %d",&pt.x,&pt.y);
+			//cout<<pt.x<<" "<<pt.y<<endl;
+			form.push_back(pt);
+		}
+	}
+}
+
+//################################ Class GameOfLife #########################################################
 
 class GameOfLife{
 public:
@@ -33,8 +65,13 @@ public:
 	void modifyWorld(int,int,bool);
 	void placeForm(int,int,Form);
 	void toggleGrid(){grid=!grid;updateNeeded=true;};
+	void placeFormMouse(int,int);
+	void changeForm(int);
+	vector<Form> forms;
+	vector<string> names;
 
 private:
+	int currentForm;
 	// Grid dimensions
 	int grid_Width;
 	int grid_Height;
@@ -85,7 +122,7 @@ GameOfLife::GameOfLife(int g_width=100,int g_height=100, int wi_width=500, int w
 	dx = w_width/grid_Width;
 	dy = w_height/grid_Height;
 
-
+	// Initialize data
 	for(int w=0;w<g_width;w++){
 		vector<Cell> row;
 		for(int h=0;h<g_height;h++){
@@ -93,6 +130,10 @@ GameOfLife::GameOfLife(int g_width=100,int g_height=100, int wi_width=500, int w
 		}
 		world.push_back(row);
 	}
+
+	// Load template from file
+	parseFormFile("lifeform.txt", forms, names);
+	currentForm = 0;
 }
 
 int GameOfLife::countNei(int xPos,int yPos){
@@ -216,13 +257,29 @@ void GameOfLife::placeForm(int x, int y, Form f){
 	updateNeeded = true;
 }
 
+void GameOfLife::placeFormMouse(int x, int y){
+	if(forms.size()==0)return;
+	placeForm(x*grid_Width/w_width,y*grid_Height/w_height,forms[currentForm]);
+}
+
+void GameOfLife::changeForm(int dir){
+	if(dir == UP){
+		currentForm++;
+		if(currentForm >= (int)forms.size())currentForm = 0;
+	}
+	else if(dir == DOWN){
+		currentForm--;
+		if(currentForm < 0)currentForm = forms.size()-1;
+	}
+	cout<<names[currentForm]<<endl;
+}
+
 //#########################################################################################
 
 
 void loop(int gridW,int gridH){
 	GameOfLife ant(gridW,gridH,500,500);
 	ant.step();
-	ant.placeForm(0,0,glider);
 	SDL_Event ev;
 	bool autoStep=false;
 	bool clicked=false;
@@ -247,6 +304,8 @@ void loop(int gridW,int gridH){
 						case 's':{delayVal*=2;break;}
 						case 'x':{autoStep=false;ant.killAll();break;}
 						case 'g':{ant.toggleGrid();break;}
+						case 'l':{ant.changeForm(UP);break;}
+						case 'k':{ant.changeForm(DOWN);break;}
 						default:{
 							break;
 						}
@@ -254,11 +313,18 @@ void loop(int gridW,int gridH){
 					break;
 				}
 				case SDL_MOUSEBUTTONDOWN:{
-					state=(ev.button.button==SDL_BUTTON_LEFT);
-					int mouseX=ev.button.x;
-					int mouseY=ev.button.y;
-					ant.modifyWorld((int)mouseX,(int)mouseY,state);
-					clicked=true;
+					// Set the cell
+					if(ev.button.button==SDL_BUTTON_LEFT || ev.button.button==SDL_BUTTON_RIGHT){
+						state=(ev.button.button==SDL_BUTTON_LEFT);
+						int mouseX=ev.button.x;
+						int mouseY=ev.button.y;
+						ant.modifyWorld((int)mouseX,(int)mouseY,state);
+						clicked=true;
+					}
+					// Place form
+					if(ev.button.button==SDL_BUTTON_MIDDLE){
+						ant.placeFormMouse(ev.button.x,ev.button.y);
+					}
 					break;
 				}
 				case SDL_MOUSEBUTTONUP:{
@@ -284,17 +350,6 @@ void loop(int gridW,int gridH){
 }
 
 int main(int argc, char** argv) {
-	struct Point a = {1,0};
-	glider.push_back(a);
-	a={2,1};
-	glider.push_back(a);
-	a={0,2};
-	glider.push_back(a);
-	a={1,2};
-	glider.push_back(a);
-	a={2,2};
-	glider.push_back(a);
-
 	int grid_Width=100,grid_Height=100;
 	if(argc == 3){
 		grid_Width = atoi(argv[1]);
