@@ -32,6 +32,7 @@ public:
 	void render();
 	void modifyWorld(int,int,bool);
 	void placeForm(int,int,Form);
+	void toggleGrid(){grid=!grid;updateNeeded=true;};
 
 private:
 	// Grid dimensions
@@ -42,6 +43,8 @@ private:
 	int w_height;
 	int dx;
 	int dy;
+	bool grid;
+	bool updateNeeded;
 	int countNei(int,int);
 	int generation;
 	int currentPop;
@@ -54,6 +57,10 @@ GameOfLife::GameOfLife(int g_width=100,int g_height=100, int wi_width=500, int w
 	grid_Height = g_height;
 	w_width = wi_width;
 	w_height = wi_height;
+	
+	grid = false;
+	updateNeeded = true;
+
 	// Window
 	SDL_Window* window = SDL_CreateWindow
 	(
@@ -77,6 +84,7 @@ GameOfLife::GameOfLife(int g_width=100,int g_height=100, int wi_width=500, int w
 
 	dx = w_width/grid_Width;
 	dy = w_height/grid_Height;
+
 
 	for(int w=0;w<g_width;w++){
 		vector<Cell> row;
@@ -127,7 +135,7 @@ void GameOfLife::step(){
 
 	//Augmente l'indice de génération
 	generation++;
-	render();
+	updateNeeded = true;
 }
 
 void GameOfLife::printWorld(){
@@ -152,20 +160,19 @@ void GameOfLife::killAll(){
 			world[w][h].willSurvive=false;
 		}
 	}
+	updateNeeded = true;
 }
 
 void GameOfLife::render(){
-	int h = w_height;
-	int w = w_width;
+	if(!updateNeeded)return;
+	// Clear screen
+	SDL_SetRenderDrawColor(renderer,0,0,0,0);
+    SDL_RenderClear(renderer);
+	SDL_SetRenderDrawColor(renderer,255,255,255,255);
 	// Draw world
 	for(int y=0;y<grid_Height;y++){
 		for(int x=0;x<grid_Width;x++){
-			if(world[x][y].isAlive){
-				SDL_SetRenderDrawColor(renderer,255,255,255,255);
-			}
-			else{
-				SDL_SetRenderDrawColor(renderer,0,0,0,0);
-			}
+			if(!world[x][y].isAlive)continue;
 			SDL_Rect rect;
 			rect.x=x*dx;
 			rect.y=y*dy;
@@ -176,35 +183,37 @@ void GameOfLife::render(){
 	}
 
 	// Draw grid
-	SDL_SetRenderDrawColor(renderer,50,50,50,50);
-	for(int y=0;y<grid_Height; y++){
-		for(int x=0; x<grid_Width; x++){
-			int x_line = x*dx;
-			SDL_RenderDrawLine(renderer,x_line,0,x_line,w_height);
-		}
-	}
-	for(int x=0; x<grid_Width; x++){
+	if(grid){
+		SDL_SetRenderDrawColor(renderer,50,50,50,50);
 		for(int y=0;y<grid_Height; y++){
-			int y_line = y*dy;
-			SDL_RenderDrawLine(renderer,0,y_line,w_width,y_line);
+			for(int x=0; x<grid_Width; x++){
+				int x_line = x*dx;
+				SDL_RenderDrawLine(renderer,x_line,0,x_line,w_height);
+			}
+		}
+		for(int x=0; x<grid_Width; x++){
+			for(int y=0;y<grid_Height; y++){
+				int y_line = y*dy;
+				SDL_RenderDrawLine(renderer,0,y_line,w_width,y_line);
+			}
 		}
 	}
-
-
 	SDL_RenderPresent(renderer);
+	updateNeeded = false;
 }
 
 void GameOfLife::modifyWorld(int x, int y, bool state){
 	int h = w_height;
 	int w = w_width;
 	setWorld(x*grid_Width/w,y*grid_Height/h,state);
-	render();
+	updateNeeded = true;
 }
 
 void GameOfLife::placeForm(int x, int y, Form f){
-	for(int i=0; i<f.size(); i++){
+	for(unsigned i=0; i<f.size(); i++){
 		setWorld(x+f[i].x,y+f[i].y,true);
 	}
+	updateNeeded = true;
 }
 
 //#########################################################################################
@@ -219,7 +228,6 @@ void loop(int gridW,int gridH){
 	bool clicked=false;
 	bool state=false;
 	int delayVal=50000;
-	int timer=0;
 	for(;;){
 
 		if(delayVal<0)delayVal=0;
@@ -235,9 +243,10 @@ void loop(int gridW,int gridH){
 						case 'q':return;
 						case 'w':{autoStep=!autoStep;break;}
 						case 'e':{autoStep=false;ant.step();break;}
-						case 'a':{delayVal=(delayVal-500000<0)?0:delayVal-500000;break;}
-						case 's':{delayVal+=500000;break;}
+						case 'a':{delayVal=(delayVal>1)?delayVal/2:1;break;}
+						case 's':{delayVal*=2;break;}
 						case 'x':{autoStep=false;ant.killAll();break;}
+						case 'g':{ant.toggleGrid();break;}
 						default:{
 							break;
 						}
@@ -268,8 +277,9 @@ void loop(int gridW,int gridH){
 				default: break;
 			}
 		}
+		ant.render();
 		if(autoStep)ant.step();
-		usleep(delayVal);
+		if(!clicked)usleep(delayVal);
 	}
 }
 
