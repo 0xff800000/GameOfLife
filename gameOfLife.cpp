@@ -300,8 +300,8 @@ void loop(int gridW,int gridH){
 						case 'q':return;
 						case 'w':{autoStep=!autoStep;break;}
 						case 'e':{autoStep=false;ant.step();break;}
-						case 'a':{delayVal=(delayVal>1)?delayVal/2:1;break;}
-						case 's':{delayVal*=2;break;}
+						case 'a':{delayVal=(delayVal>100)?delayVal-100:1;break;}
+						case 's':{delayVal+=100;break;}
 						case 'x':{autoStep=false;ant.killAll();break;}
 						case 'g':{ant.toggleGrid();break;}
 						case 'l':{ant.changeForm(UP);break;}
